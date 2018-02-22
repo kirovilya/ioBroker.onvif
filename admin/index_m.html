@@ -22,7 +22,8 @@
  </style>
 <!-- you have to define 2 functions in the global scope: -->
 <script type="text/javascript">
-
+    var namespace = 'onvif.' + instance,
+        namespaceLen = namespace.length;
     // the function loadSettings has to exist ...
     function load(settings, onChange) {
         // example: select elements with id=key and class=value and insert value
@@ -63,6 +64,95 @@
         });
         callback(obj);
     }
+
+    function startDiscovery(){
+        var options = {
+            start_range: $('#start_range').val(),
+            end_range: $('#end_range').val(),
+            ports: $('#ports').val(),
+            user: $('#user').val(),
+            pass: $('#pass').val()
+        };
+        console.log(options);
+        sendTo(null, 'discovery', options, function (result) {
+            console.log(result);
+        });
+    }
+    $(document).ready(function(){
+        $('#discovery').off('click').on('click', function () {
+            startDiscovery();
+        });
+        $('.modal').modal();
+        getDevices();
+        socket.on('objectChange', function (id, obj) {
+            if (id.substring(0, namespaceLen) !== namespace) return;
+            if (obj && obj.type == "device") {
+                getDevices();
+            }
+        });
+    });
+
+    function getCard(dev) {
+        var title = dev.common.name,
+            id = dev._id,
+            info = '',
+            buttons = '',
+            card = '<div id="' + id + '" class="tile col s12 m6 l4 xl3">'+
+                '<div class="card hoverable">'+
+                '<div class="card-content">'+
+                '<span class="card-title">'+title+'</span>'+
+                info+
+                buttons+
+                '</div>'+
+                '</div>'+
+                '</div>';
+        return card;
+    }
+
+    function showDevices(devices) {
+        var html = '';
+        for (var i=0;i < devices.length; i++) {
+            var d = devices[i];
+            var card = getCard(d);
+            html += card;
+        }
+        $('#devices').html(html);
+//        $("a.btn-floating[name='delete']").click(function() {
+//            var dev_block = $(this).parents("div.device"),
+//                id = dev_block.attr("id"),
+//                name = dev_block.find(".card-title").text();
+//            deleteConfirmation(id, name);
+//        });
+//        $("a.btn-floating[name='edit']").click(function(e) {
+//            var dev_block = $(this).parents("div.device"),
+//                id = dev_block.attr("id"),
+//                name = dev_block.find(".card-title").text();
+//            // editName(id, name);
+//            openReval(e, id, name);
+//        });
+//        $("a.btn[name='done']").click(function(e) {
+//            var dev_block = $(this).parents("div.device"),
+//                id = dev_block.attr("id"),
+//                name = dev_block.find("input").val();
+//            closeReval(e, id, name);
+//        });
+//        $("a.btn-flat[name='close']").click(function(e) {
+//            closeReval(e);
+//        });
+    }
+
+    function getDevices() {
+        sendTo(null, 'getDevices', {}, function (msg) {
+            //console.log(msg);
+            if (msg) {
+                if (msg.error) {
+                    showMessage(msg.error, _('Error'), 'alert');
+                } else {
+                    showDevices(msg);
+                }
+            }
+        });
+    }
 </script>
 </head>
 <body>
@@ -71,18 +161,83 @@
         <div class="row">
             <!-- Forms are the standard way to receive user inputted data.
          Learn more http://materializecss.com/forms.html-->
-            <div class="row">
-                <div class="input-field col s6">
-                    <img src="onvif_logo.png" class="logo">
+            <div class="row valign-wrapper">
+                <div class="col s6">
+                    <img src="onvif_logo.png">
                 </div>
-            </div>
-            <div class="row">
-                <div class="col s12">
-                    <p class="translate">on save adapter restarts with new config immediately</p>
+                <div class="col s6 right-align">
+                    <!--<a class="btn-floating waves-effect waves-light btn-large green tooltipped center-align hoverable modal-trigger" href="#modal_add"><i class="material-icons large">add</i></a>-->
+                    <a class="btn-floating waves-effect waves-light btn-large blue tooltipped center-align hoverable modal-trigger" href="#modal_discovery"><i class="material-icons large">youtube_searched_for</i></a>
                 </div>
             </div>
         </div>
+        <div id="devices" class="row">
+        </div>
+    </div>
+    <div class="materialize-dialogs m">
+        <div id="modal_discovery" class="modal">
+            <div class="modal-content">
+                <div class="title translate">Scan cameras</div>
+                <div class="row">
+                    <div class="input-field col s12 m6 l4 xl3">
+                        <input class="value" id="start_range"/>
+                        <label class="translate" for="start_range">Start range</label>
+                    </div>
+                    <div class="input-field col s12 m6 l4 xl3">
+                        <input class="value" id="end_range"/>
+                        <label class="translate" for="end_range">End range</label>
+                    </div>
+                    <div class="input-field col s12 m6 l4 xl3">
+                        <input class="value" id="ports"/>
+                        <label class="translate" for="ports">Port list</label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="input-field col s12 m6 l4 xl4">
+                        <input class="value" id="user"/>
+                        <label class="translate" for="user">User name</label>
+                    </div>
+                    <div class="input-field col s12 m6 l4 xl4">
+                        <input class="value" id="pass"/>
+                        <label class="translate" for="pass">Password</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="discovery" href="#!" class="modal-action modal-close waves-effect waves-green btn-flat translate" data-result="true">Start scan</a>
+                <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat translate">Cancel</a>
+            </div>
+        </div>
+        <div class="materialize-dialogs m">
+            <div id="modal_add" class="modal">
+                <div class="modal-content">
+                    <div class="title translate">Add camera</div>
+                    <div class="row">
+                        <div class="input-field col s12 m6 l4 xl3">
+                            <input class="value" id="ip"/>
+                            <label class="translate" for="ip">IP</label>
+                        </div>
+                        <div class="input-field col s12 m6 l4 xl3">
+                            <input class="value" id="port"/>
+                            <label class="translate" for="port">Port</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12 m6 l4 xl4">
+                            <input class="value" id="c_user"/>
+                            <label class="translate" for="c_user">User name</label>
+                        </div>
+                        <div class="input-field col s12 m6 l4 xl4">
+                            <input class="value" id="c_pass"/>
+                            <label class="translate" for="c_pass">Password</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a id="add" href="#!" class="modal-action modal-close waves-effect waves-green btn-flat translate" data-result="true">Create</a>
+                    <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat translate">Cancel</a>
+                </div>
+        </div>
     </div>
 </body>
-
 </html>

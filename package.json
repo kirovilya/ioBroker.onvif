@@ -21,10 +21,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/kirovilya/ioBroker.onvif"
+    "url": "git+https://github.com/kirovilya/ioBroker.onvif.git"
   },
   "dependencies": {
-    "onvif": "^0.6.0"
+    "onvif": "^0.6.0",
+    "nimble": "^0.0.2"
   },
   "devDependencies": {
     "gulp": "^3.9.1",
