@@ -61,7 +61,18 @@
     "native": {
         
     },
-    "objects": [
-
+    "instanceObjects": [
+        {
+            "_id":  "discoveryRunning",
+            "type": "state",
+            "common": {
+                "name":  "Scannig mode",
+                "type":  "boolean",
+                "read":  true,
+                "write": false,
+                "def":   false
+            },
+            "native": {}
+        }
     ]
 }

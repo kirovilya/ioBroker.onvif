@@ -74,6 +74,10 @@ adapter.on('message', function (obj) {
             adapter.log.debug('Received "getDevices" event');
             getDevices(obj.from, obj.command, obj.callback);
             break;
+        case 'deleteDevice':
+            adapter.log.debug('Received "deleteDevice" event');
+            deleteDevice(obj.from, obj.command, obj.message, obj.callback);
+            break;
         default:
             adapter.log.debug('Unknown message: ' + JSON.stringify(obj));
             break;
@@ -89,12 +93,20 @@ adapter.on('ready', function () {
 
 function main() {
     isDiscovery = false;
+    adapter.setState('discoveryRunning', false, true);
     // in this template all states changes inside the adapters namespace are subscribed
     adapter.subscribeStates('*');
 
     // check online state and ONVIF function of registered cameras
 }
 
+function deleteDevice(from, command, msg, callback) {
+    var id = msg.id,
+        dev_id = id.replace(adapter.namespace+'.', '');
+    adapter.deleteDevice(dev_id, function(){
+        adapter.sendTo(from, command, {}, callback);
+    });
+}
 
 function getDevices(from, command, callback){
     var rooms;

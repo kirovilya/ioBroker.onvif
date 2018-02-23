@@ -90,14 +90,29 @@
                 getDevices();
             }
         });
+        // react to changes
+        socket.on('stateChange', function (id, state) {
+            // only watch our own states
+            if (id.substring(0, namespaceLen) !== namespace) return;
+            console.log("State change announced: " + id + " and obj = " + JSON.stringify(state));
+            if (state) {
+                if (id.match(/\.discoveryRunning$/)) {
+                    if (state.val) {
+                        $('#discovery').addClass('pulse disabled');
+                    } else {
+                        $('#discovery').removeClass('pulse disabled');
+                    }
+                }
+            }
+        });
     });
 
     function getCard(dev) {
         var title = dev.common.name,
             id = dev._id,
             info = '',
-            buttons = '',
-            card = '<div id="' + id + '" class="tile col s12 m6 l4 xl3">'+
+            buttons = '<a name="delete" class="btn-floating waves-effect waves-light right hoverable black"><i class="material-icons tiny">delete</i></a>',
+            card = '<div id="' + id + '" class="device col s12 m6 l4 xl3">'+
                 '<div class="card hoverable">'+
                 '<div class="card-content">'+
                 '<span class="card-title">'+title+'</span>'+
@@ -117,12 +132,12 @@
             html += card;
         }
         $('#devices').html(html);
-//        $("a.btn-floating[name='delete']").click(function() {
-//            var dev_block = $(this).parents("div.device"),
-//                id = dev_block.attr("id"),
-//                name = dev_block.find(".card-title").text();
-//            deleteConfirmation(id, name);
-//        });
+        $("a.btn-floating[name='delete']").click(function() {
+            var dev_block = $(this).parents("div.device"),
+                id = dev_block.attr("id"),
+                name = dev_block.find(".card-title").text();
+            deleteConfirmation(id, name);
+        });
 //        $("a.btn-floating[name='edit']").click(function(e) {
 //            var dev_block = $(this).parents("div.device"),
 //                id = dev_block.attr("id"),
@@ -139,6 +154,30 @@
 //        $("a.btn-flat[name='close']").click(function(e) {
 //            closeReval(e);
 //        });
+    }
+
+    function deleteConfirmation(id, name) {
+        var text = 'Do you really whant to delete device "'+name+'" ('+id+')?';
+        $('#modaldelete').find("h3").text("Delete confirmation");
+        $('#modaldelete').find("p").text(text);
+        $("#modaldelete a.btn[name='yes']").unbind("click");
+        $("#modaldelete a.btn[name='yes']").click(function(e) {
+            deleteDevice(id);
+        });
+        $('#modaldelete').modal('open');
+    }
+
+    function deleteDevice(id) {
+        sendTo(null, 'deleteDevice', {id: id}, function (msg) {
+            //console.log(msg);
+            if (msg) {
+                if (msg.error) {
+                    showMessage(msg.error.code, _('Error'), 'alert');
+                } else {
+                    getDevices();
+                }
+            }
+        });
     }
 
     function getDevices() {
@@ -180,25 +219,25 @@
                 <div class="title translate">Scan cameras</div>
                 <div class="row">
                     <div class="input-field col s12 m6 l4 xl3">
-                        <input class="value" id="start_range"/>
-                        <label class="translate" for="start_range">Start range</label>
+                        <input class="value" type="text" id="start_range"/>
+                        <label class="translate" for="start_range" data-lang="startRange">Start range</label>
                     </div>
                     <div class="input-field col s12 m6 l4 xl3">
-                        <input class="value" id="end_range"/>
+                        <input class="value" type="text" id="end_range"/>
                         <label class="translate" for="end_range">End range</label>
                     </div>
                     <div class="input-field col s12 m6 l4 xl3">
-                        <input class="value" id="ports"/>
+                        <input class="value" type="text" id="ports"/>
                         <label class="translate" for="ports">Port list</label>
                     </div>
                 </div>
                 <div class="row">
                     <div class="input-field col s12 m6 l4 xl4">
-                        <input class="value" id="user"/>
+                        <input class="value" type="text" id="user"/>
                         <label class="translate" for="user">User name</label>
                     </div>
                     <div class="input-field col s12 m6 l4 xl4">
-                        <input class="value" id="pass"/>
+                        <input class="value" type="password" id="pass"/>
                         <label class="translate" for="pass">Password</label>
                     </div>
                 </div>
@@ -237,6 +276,19 @@
                     <a id="add" href="#!" class="modal-action modal-close waves-effect waves-green btn-flat translate" data-result="true">Create</a>
                     <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat translate">Cancel</a>
                 </div>
+            </div>
+        </div>
+        <div class="materialize-dialogs m">
+            <div id="modaldelete" class="modal">
+                <div class="modal-content">
+                    <h3>Modal Header</h3>
+                    <p>A bunch of text</p>
+                </div>
+                <div class="modal-footer">
+                    <a name="yes" href="#!" class="modal-action modal-close waves-effect waves-green btn green">Yes</a>
+                    <a href="#!" class="modal-action modal-close waves-effect waves-red btn-flat">Cancel</a>
+                </div>
+            </div>
         </div>
     </div>
 </body>
