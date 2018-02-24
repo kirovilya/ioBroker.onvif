@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "onvif": "^0.6.0",
-    "nimble": "^0.0.2"
+    "nimble": "^0.0.2",
+    "onvif-snapshot": "^1.0.2"
   },
   "devDependencies": {
     "gulp": "^3.9.1",
