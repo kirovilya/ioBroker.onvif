@@ -19,10 +19,40 @@ var adapter = new utils.Adapter('onvif');
 var Cam = require('onvif').Cam;
 var flow = require('nimble');
 require('onvif-snapshot');
+var url = require('url');
+var inherits = require('util').inherits;
 
 var isDiscovery = false;
 
 var cameras = {};
+
+function override(child, fn) {
+    child.prototype[fn.name] = fn;
+    fn.inherited = child.super_.prototype[fn.name];
+}
+
+// overload Cam to preserve original hostname
+function MyCam(options, callback) {
+    MyCam.super_.call(this, options, callback);
+}
+inherits(MyCam, Cam);
+
+
+override(MyCam, function getSnapshotUri(options, callback) {
+    getSnapshotUri.inherited.call(this, options, function(err, res){
+        if(!err) {
+            const parsedAddress = url.parse(res.uri);
+            // If host for service and default host dirrers, also if preserve address property set
+            // we substitute host, hostname and port from settings
+            if (this.hostname !== parsedAddress.hostname) {
+                adapter.log.debug('need replace '+res.uri);
+                res.uri = res.uri.replace(parsedAddress.hostname, this.hostname);
+                adapter.log.debug('after replace '+res.uri);
+            }
+        }
+        if (callback) callback(err, res);
+    });
+});
 
 
 // is called when adapter shuts down - callback has to be called under any circumstances!
@@ -126,6 +156,12 @@ function getSnapshot(from, command, message, callback){
     }
 }
 
+
+function camEvents(camMessage) {
+    adapter.log.debug('camEvents: ' + JSON.stringify(camMessage));
+}
+
+
 function startCameras(){
     cameras = {};
     adapter.log.debug('startCameras');
@@ -135,18 +171,21 @@ function startCameras(){
             let dev = result[item],
                 devData = dev.common.data,
                 cam;
-            updateState(dev._id, 'connected', false, {type: 'boolean'});
-            cam = new Cam({
+            //updateState(dev._id, 'connected', false, {type: 'boolean'});
+            cam = new MyCam({
                 hostname: devData.ip,
                 port: devData.port,
                 username: devData.user,
                 password: devData.pass,
-                timeout : 5000
+                timeout : 5000,
+                preserveAddress: true
             }, function(err) {
                 if (!err) {
                     adapter.log.debug('capabilities: ' + JSON.stringify(cam.capabilities));
-                    updateState(dev._id, 'connected', true, {type: 'boolean'});
+                    adapter.log.debug('uri: ' + JSON.stringify(cam.uri));
+                    //updateState(dev._id, 'connected', true, {type: 'boolean'});
                     cameras[dev._id] = cam;
+                    cam.on('event', camEvents);
                 } else {
                     adapter.log.info('startCameras err=' + err +' dev='+ JSON.stringify(devData));
                 }
@@ -273,12 +312,13 @@ function discovery(options, callback) {
 
             adapter.log.debug(ip_entry + ' ' + port_entry);
 
-            new Cam({
+            new MyCam({
                 hostname: ip_entry,
                 username: user,
                 password: pass,
                 port: port_entry,
-                timeout : 5000
+                timeout : 5000,
+                preserveAddress: true
             }, function CamFunc(err) {
                 counter++;
                 if (err) {
